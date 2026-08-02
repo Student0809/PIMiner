@@ -1,0 +1,32 @@
+# PIMiner — Reset strategy library command (utility)
+#
+# Clears every learned strategy from strategy_library/, leaving only
+# _TEMPLATE.md (the structural reference). Use before a clean training
+# run or before publishing a reproducible repo snapshot.
+#
+# DESTRUCTIVE — the agent backs up the current library to
+# eval_results/strategy_library_backups/reset_<label>/ before deleting,
+# but you must supply <label> (or accept the agent's auto-pick).
+#
+# Docs: UTILITY.md → "Reset strategy library"
+# ============================================================================
+
+Reset PIMiner's strategy library to empty. Keep only the structure template.
+Backup label: <label>.
+
+# ============================================================================
+# WORKED EXAMPLE — copy verbatim:
+# ============================================================================
+
+Reset PIMiner's strategy library to empty. Keep only the structure template.
+Backup label: pre_pilot3pairs_train.
+
+# ============================================================================
+# What the agent does:
+#   1. Lists strategy_library/*_attack_strategy_*.md (skips _TEMPLATE.md)
+#   2. Copies them to eval_results/strategy_library_backups/reset_<label>/
+#   3. Deletes them from strategy_library/
+#   4. Verifies only _TEMPLATE.md remains
+#   5. Reports: strategy library reset: N file(s) backed up to <dir>,
+#               strategy_library/ now contains only _TEMPLATE.md.
+# ============================================================================

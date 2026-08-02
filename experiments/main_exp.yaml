@@ -1,0 +1,45 @@
+# PIMiner experiment spec — edit THIS file, then run:
+#   python piminer_plan.py experiments/main_exp.yaml
+# It writes eval_results/pim_train/<name>/train_plan.json and
+#          eval_results/pim_test/<name>/test_plan.json
+# with sample_offset / run_dir / status derived automatically. Offsets are keyed
+# by BENCHMARK ONLY (not target): every target on a benchmark trains on the SAME
+# samples (offset 0); the test window is placed right after the train window, so
+# train and test never overlap while targets share the same samples.
+
+name: main_exp
+max_iters: 10                  # training (library evolves over the full budget)
+test_max_iters: 10             # testing only (frozen library); falls back to max_iters if omitted
+threat_model: black_box        # applies to the test sequence only
+
+# Training sequence (router-based, library evolves + digests after each).
+# Same samples per benchmark across targets: agentdojo train = samples 0..19,
+# ipi_arena train = samples 0..14 (shared by all three targets).
+train:
+  - {dataset: agentdojo, target: gpt-5-nano,       n: 20}
+  - {dataset: agentdojo, target: gpt-5,            n: 20}
+  - {dataset: agentdojo, target: claude-haiku-4-5, n: 20}
+  - {dataset: ipi_arena, target: gpt-5-nano,       n: 20}
+  - {dataset: ipi_arena, target: gpt-5,            n: 20}
+  - {dataset: ipi_arena, target: claude-haiku-4-5, n: 20}
+  - {dataset: agentdojo, target: claude-sonnet-4-5, n: 20}
+  - {dataset: ipi_arena, target: claude-sonnet-4-5, n: 20}
+
+# Test sequence (strategy library FROZEN, black-box). Offsets auto-computed,
+# placed right after the train window on each benchmark:
+#   agentdojo train n=20 -> test starts at offset 20 (samples 20..49, shared)
+#   ipi_arena train n=20 -> test starts at offset 20 (samples 20..40, shared)
+test:
+  - {dataset: ipi_arena, target: gpt-4o-mini,       n: 21}
+  - {dataset: ipi_arena, target: gpt-5-nano,       n: 21}
+  - {dataset: ipi_arena, target: gpt-5,       n: 21}
+  - {dataset: ipi_arena, target: gpt-5.1,       n: 21}
+  - {dataset: ipi_arena, target: claude-haiku-4-5, n: 21}
+  - {dataset: ipi_arena, target: claude-sonnet-4-5, n: 21}
+  - {dataset:  agentdojo, target: gpt-4o-mini,       n: 30}
+  - {dataset:  agentdojo, target: gpt-4.1-nano, n: 30}
+  - {dataset: agentdojo, target: gpt-5-nano, n: 30}
+  - {dataset: agentdojo, target: gpt-5, n: 30}
+  - {dataset: agentdojo, target: gpt-5.1, n: 30}
+  - {dataset: agentdojo, target: claude-haiku-4-5, n: 30}
+  - {dataset: agentdojo, target: claude-sonnet-4-5, n: 30}  

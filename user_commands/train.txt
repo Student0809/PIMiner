@@ -1,0 +1,33 @@
+# PIMiner — Training phase, experiment-spec flow
+#
+# Training and test sequences are BOTH defined in one file: experiments/<name>.yaml.
+# You edit that file, then run two commands. See experiments/main_exp.yaml for a
+# worked example, and USAGE.md "Training and Test" / CLAUDE.md for details.
+# ============================================================================
+
+# 1. Edit (or create) the spec — the `train:` block is the training sequence:
+#
+#      name: main_exp
+#      max_iters: 10
+#      train:
+#        - {dataset: agentdojo, target: gpt-5-nano, n: 20}
+#        - {dataset: ipi_arena, target: gpt-5,      n: 15}
+#      test:                       # optional; consumed by test.txt's flow
+#        - {dataset: agentdojo, target: gpt-5-nano, n: 10}
+
+# 2. Build the plan files (auto-computes sample_offset / run_dir / status):
+
+python piminer_plan.py experiments/main_exp.yaml
+
+# 3. Run training in parallel (resumable; digests + snapshots after each dataset):
+
+PIM_WAVE_SIZE=5 PIM_ATTACK_MODE=rolling ./piminer_train_parallel.sh eval_results/pim_train/main_exp
+
+# ============================================================================
+# Or just tell Claude Code in natural language and it will do steps 1–3:
+#
+#   Train PIMiner on experiment main_exp: agentdojo×gpt-5-nano n=20,
+#   ipi_arena×gpt-5 n=15. iterative attack iterations 10.
+#
+# The agent writes experiments/main_exp.yaml, runs piminer_plan.py, then the driver.
+# ============================================================================

@@ -1,0 +1,26 @@
+
+# local secrets (never commit)
+.env
+.env.local
+
+# run outputs (large, regenerable, and CONTAIN secrets in verbose logs)
+eval_results/
+logs/
+agentdojo_outputs/
+*.log
+no_hup.out
+
+# scratch / caches
+err.tmp
+*.tmp
+__pycache__/
+*.pyc
+.DS_Store
+
+# transient stderr/stdout/prompt redirect dumps that attacker/router agent
+# sessions write into the repo ROOT (e.g. `next ... 2>next_stderr_sN.txt`,
+# next_delta_*, route_*, submit_*). Root-anchored so real subdir files are safe.
+# No legitimate top-level file uses these prefixes; all are regenerable noise.
+/next_*.txt
+/route_*.txt
+/submit_*.txt

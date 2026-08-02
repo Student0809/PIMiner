@@ -1,0 +1,29 @@
+# PIMiner runtime dependencies.
+# Versions are pinned to the `pismith` conda env used for the experiments.
+# For an exact, byte-for-byte reproduction of that environment (all 363 pkgs,
+# including CUDA/vLLM/etc. not needed by PIMiner itself), see requirements-lock.txt.
+#
+# Recommended: Python 3.10+ in a fresh venv/conda env, then `pip install -r requirements.txt`.
+
+# --- Benchmark harness (core) ---
+agentdojo==0.1.35
+
+# --- Target-model provider SDKs ---
+openai==1.107.3
+anthropic==0.71.0
+google-genai==1.47.0          # imported as `from google import genai`
+# DeepSeek targets are reached through the OpenAI-compatible client above (no separate SDK).
+
+# --- Config / data plumbing ---
+PyYAML==6.0.2                 # experiments/*.yaml -> plan files (piminer_plan.py)
+nltk==3.9.2                   # lazy: only the InjecAgent ReAct (prompted) scoring path
+
+# --- torch: only used for torch.utils.data.Dataset in benchmarks/agentdojo/dataset.py ---
+# The pismith env had torch==2.8.0+cu129 (CUDA build). PIMiner does not need a GPU;
+# install the build that matches your platform, e.g. `pip install torch==2.8.0`.
+torch==2.8.0
+
+# --- IPI-Arena benchmark (optional; only for the ipi_arena dataset) ---
+# The `ipi_arena_bench` package is NOT on PyPI — it is vendored in-tree under
+# data/ipi_arena/repo/ (GraySwanAI/ipi_arena_os, MIT). Install it with:
+#   pip install -e data/ipi_arena/repo

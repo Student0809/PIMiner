@@ -1,0 +1,28 @@
+# PIMiner — Test phase, experiment-spec flow
+#
+# The test sequence is the `test:` block of the SAME experiments/<name>.yaml
+# used for training. Test runs are FROZEN (strategy_library/ never changes;
+# verified by a SHA-256 manifest) and BLACK-BOX (attacker sees only the target's
+# final output + binary verdict; trajectory redacted in-prompt and on disk).
+#
+# Disjointness is AUTOMATIC: each test offset is placed after all training on the
+# same benchmark, so test samples never overlap training. You do not compute
+# offsets. See USAGE.md "Training and Test" / CLAUDE.md.
+# ============================================================================
+
+# 1. Ensure the spec has a `test:` block, then (re)build the plan files:
+#
+#      test:
+#        - {dataset: agentdojo, target: gpt-5-nano, n: 10}
+#        - {dataset: ipi_arena, target: gpt-5,      n: 10}
+
+python piminer_plan.py experiments/main_exp.yaml
+
+# 2. Run the test in parallel (no digest, no snapshot; ASR -> test_results.json):
+
+PIM_WAVE_SIZE=5 PIM_ATTACK_MODE=rolling ./piminer_test_parallel.sh eval_results/pim_test/main_exp
+
+# ============================================================================
+# Or in natural language: "Run the test sequence for experiment main_exp."
+# The agent runs piminer_plan.py (if needed) then piminer_test_parallel.sh.
+# ============================================================================
