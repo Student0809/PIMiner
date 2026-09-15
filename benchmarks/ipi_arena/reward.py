@@ -241,6 +241,13 @@ def _messages_oa_to_anthropic(
     in OpenAI-format are pulled out and returned separately because
     Anthropic puts the system prompt in a top-level `system` parameter.
     """
+    # IPI-Arena represents parallel tool calls as consecutive assistant turns,
+    # followed by their batched tool results. Anthropic requires every assistant
+    # tool_use turn to be followed immediately by a user turn containing the
+    # matching tool_result blocks. Merge the assistant turns first so the batched
+    # results satisfy that invariant (the OpenAI path does the same normalization).
+    messages = _merge_consecutive_assistant_toolcalls(messages)
+
     anth: List[Dict[str, Any]] = []
     system_chunks: List[str] = []
     pending_results: List[Dict[str, Any]] = []

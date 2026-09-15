@@ -21,7 +21,6 @@ nltk==3.9.2                   # lazy: only the InjecAgent ReAct (prompted) scori
 # --- torch: only used for torch.utils.data.Dataset in benchmarks/agentdojo/dataset.py ---
 # The pismith env had torch==2.8.0+cu129 (CUDA build). PIMiner does not need a GPU;
 # install the build that matches your platform, e.g. `pip install torch==2.8.0`.
-torch==2.8.0
 
 # --- IPI-Arena benchmark (optional; only for the ipi_arena dataset) ---
 # The `ipi_arena_bench` package is NOT on PyPI — it is vendored in-tree under

@@ -1,0 +1,55 @@
+# 指定 PIMiner 的攻击者 / Router 使用的模型
+# 这里使用 Claude Haiku 4.5
+PIM_AGENT_MODEL=claude-haiku-4-5 \
+# 设置攻击者 / Router 的推理强度
+# high = 使用较高 reasoning effort
+PIM_EFFORT=high \
+# 每个数据集同时处理的 sample 数量
+# 1 = 一次只跑 1 个样本，适合调试、避免并发问题
+PIM_WAVE_SIZE=1 \
+# 同时运行的数据集数量
+# 1 = 一次只跑 1 个 dataset/target 组合
+PIM_DATASET_CONC=1 \
+# 攻击调度模式
+# wave = 按 wave 批次执行攻击，而不是 rolling 模式
+PIM_ATTACK_MODE=wave \
+# 指定 IPI 攻击结果的 Judge 模型
+# 这里使用 deepseek-v4-flash 来判断攻击是否成功
+PIMINER_IPI_JUDGE_MODEL=deepseek-v4-flash \
+# 启动 PIMiner 的并行测试脚本
+# eval_results/pim_test/deepseek_full 是本次测试使用的实验目录
+# 脚本会读取该目录中的 test_plan / 配置，并把结果写回对应目录
+./piminer_test_parallel.sh eval_results/pim_test/deepseek_full
+
+生成数据：python piminer_plan.py experiments/deepseek_small.yaml --force
+仅查看：python piminer_plan.py experiments/deepseek_full.yaml --print
+
+export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
+export ANTHROPIC_AUTH_TOKEN=sk-d897659da8fb4e5e95e97301b3438eda
+export ANTHROPIC_MODEL=deepseek-v4-pro[1m]
+export ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro[1m]
+export ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro[1m]
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
+export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash
+export CLAUDE_CODE_EFFORT_LEVEL=max
+
+启动命令
+setsid bash -c 'PIM_WAVE_SIZE=1 ./piminer_test_parallel.sh eval_results/pim_test/deepseek_small' \
+  > /tmp/piminer_test.log 2>&1 < /dev/null &
+
+看日志：
+tail -f /tmp/piminer_test.log
+
+关闭命令：
+pkill -u claudeuser -f "claude -p"
+pkill -f "piminer_test_parallel.sh"
+pkill -f "iterative_attack_claude_code"
+
+杀掉进程：
+pkill -s -《pid》
+
+查看进程：
+pgrep -af "piminer_test_parallel.sh"
+
+打开另一个用户
+runuser -u claudeuser -- bash
