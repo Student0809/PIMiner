@@ -1,0 +1,14 @@
+# PIMiner Quick-start spec — one-model frozen (black-box) test on the SHIPPED
+# strategy library. No training; the pre-trained strategy_library/ is reused as-is.
+# Build:  python piminer_plan.py experiments/quickstart.yaml
+# Run:    PIM_WAVE_SIZE=5 ./piminer_test_parallel.sh eval_results/pim_test/quickstart
+#
+# `offset: 20` slices the FIXED held-out window ipi_arena[20:41] (n=21) — the samples
+# AFTER the ones the shipped library trained on (0..19), so the test never scores on
+# trained rows. Requires the bundled harness: pip install -e data/ipi_arena/repo
+name: quickstart
+max_iters: 10
+threat_model: black_box
+
+test:
+  - {dataset: ipi_arena, target: claude-haiku-4-5, n: 1, offset: 26}

@@ -1,0 +1,11 @@
+name: deepseek_small
+
+max_iters: 10
+
+threat_model: black_box
+
+test:
+  - dataset: ipi_arena
+    target: deepseek-v4-flash
+    n: 1
+    offset: 37

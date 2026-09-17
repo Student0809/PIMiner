@@ -36,32 +36,21 @@ if [ -f "$ENV_FILE" ]; then
   set -a; . "$ENV_FILE"; set +a
   echo "[split] loaded provider keys from $ENV_FILE"
 fi
-# Freeze the target credential under a name Claude Code/provider settings do
-# not use. The ordinary DEEPSEEK_API_KEY is removed only from attacker/router
-# processes below, then restored inside `submit`.
-if [ -z "${PIMINER_TARGET_DEEPSEEK_API_KEY:-}" ] && [ -n "${DEEPSEEK_API_KEY:-}" ]; then
-  export PIMINER_TARGET_DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY"
-fi
 if printenv ANTHROPIC_API_KEY >/dev/null 2>&1; then
   unset ANTHROPIC_API_KEY
-  echo "[split] unset ANTHROPIC_API_KEY so attacker/router use Claude Code's configured auth"
+  echo "[split] unset ANTHROPIC_API_KEY so attacker/router use the Max subscription auth"
 fi
 MAXITERS=$(python3 -c "import json;print(json.load(open('$PLAN'))['max_iters'])")
 WAVE="${PIM_WAVE_SIZE:-5}"             # concurrency (in-flight sessions)
 ATTACK_MODE="${PIM_ATTACK_MODE:-rolling}"   # rolling | wave
-# Explicit PIM_AGENT_MODEL wins; otherwise honor the project's Claude Code
-# provider/model configuration (e.g. DeepSeek), then fall back to Claude.
-PROJECT_AGENT_MODEL=""
-if [ -f .claude/settings.json ]; then
-  PROJECT_AGENT_MODEL=$(python3 -c "import json;print(json.load(open('.claude/settings.json')).get('env',{}).get('ANTHROPIC_MODEL',''))" 2>/dev/null || true)
-fi
-AGENT_MODEL="${PIM_AGENT_MODEL:-${PROJECT_AGENT_MODEL:-claude-opus-4-7}}"
+# Pin the attacker/router/digest sub-agent model for reproducibility.
+AGENT_MODEL="${PIM_AGENT_MODEL:-claude-opus-4-7}"
 EFFORT="${PIM_EFFORT:-xhigh}"          # training reasoning effort (xhigh = full refinement)
-echo "[split] attacker/router=ClaudeCode($AGENT_MODEL,effort=$EFFORT); targets=OpenAI/target-Anthropic; conc=$WAVE; mode=$ATTACK_MODE"
+echo "[split] attacker/router=Max($AGENT_MODEL,effort=$EFFORT); targets=OpenAI/target-Anthropic; conc=$WAVE; mode=$ATTACK_MODE"
 
 claude_as_user() {
   runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
+    env -u IS_SANDBOX \
       HOME=/home/claudeuser \
       claude "$@"
 }
@@ -83,7 +72,7 @@ import json,sys,glob
 rd=sys.argv[1]; n=t=0
 for f in glob.glob(rd+"/samples/*.json"):
     n+=1
-    if json.load(open(f)).get("status") in ("hit","miss","other"): t+=1
+    if json.load(open(f)).get("status") in ("hit","miss"): t+=1
 print(f"{t} {n}")
 PY
 }
@@ -95,24 +84,8 @@ for f in glob.glob(rd+"/samples/*.json"):
 print(tot)
 PY
 }
-sample_terminal() {  # <sample_json_path> -> "1" if hit/miss/other else "0"
-  python3 -c "import json,sys;print('1' if json.load(open(sys.argv[1])).get('status') in ('hit','miss','other') else '0')" "$1" 2>/dev/null || echo 0
-}
-other_count() {  # <run_dir> -> number of infrastructure/provider failures
-  python3 -c "import json,glob,sys;print(sum(1 for f in glob.glob(sys.argv[1]+'/samples/*.json') if json.load(open(f)).get('status')=='other'))" "$1" 2>/dev/null || echo 0
-}
-recover_infra_errors() {  # archive the failed attempt and make it retryable
-  python3 - "$1" <<'PY'
-import glob,json,sys
-n=0
-for path in glob.glob(sys.argv[1]+"/samples/*.json"):
-    sample=json.load(open(path)); history=sample.get("history") or []
-    if sample.get("status")=="other" and history and history[-1].get("error"):
-        sample.setdefault("infrastructure_errors",[]).append(history.pop())
-        sample["status"]="pending"; n+=1
-        with open(path,"w") as f: json.dump(sample,f,indent=2)
-print(n)
-PY
+sample_terminal() {  # <sample_json_path> -> "1" if hit/miss else "0"
+  python3 -c "import json,sys;print('1' if json.load(open(sys.argv[1])).get('status') in ('hit','miss') else '0')" "$1" 2>/dev/null || echo 0
 }
 
 # --- usage-limit guard ------------------------------------------------------
@@ -173,71 +146,18 @@ attacker_prompt() {
 }
 launch() {
   timeout -k 30 2400 \
-    runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
-      HOME=/home/claudeuser \
-      claude \
+    claude_as_user \
       -p "$(attacker_prompt "$1")" \
       --model "$AGENT_MODEL" \
       --effort "$EFFORT" \
       --dangerously-skip-permissions \
-      --verbose \
-      --output-format stream-json \
-      --include-partial-messages \
-      > >(tee -a "$DIR/split_attack_td${K}.log" | python3 -u iterative_attack_orchestrator/claude_stream_log.py --prefix "[split]" --context "td$K attack s$1") 2>&1 &
+      --verbose >> "$DIR/split_attack_td${K}.log" 2>&1 &
 }
 sample_routed() {  # <sample_json_path> -> "1" if it has strategy_ids else "0"
   python3 -c "import json,sys;print('1' if json.load(open(sys.argv[1])).get('strategy_ids') else '0')" "$1" 2>/dev/null || echo 0
 }
 routed_count() {  # <run_dir> -> number of samples with strategy_ids
   python3 -c "import json,glob,sys;print(sum(1 for f in glob.glob(sys.argv[1]+'/samples/*.json') if json.load(open(f)).get('strategy_ids')))" "$1" 2>/dev/null || echo 0
-}
-format_elapsed() {  # <seconds> -> compact human-readable duration
-  local s="${1:-0}"
-  if [ "$s" -ge 3600 ]; then
-    printf '%dh%02dm%02ds' "$((s / 3600))" "$(((s % 3600) / 60))" "$((s % 60))"
-  elif [ "$s" -ge 60 ]; then
-    printf '%dm%02ds' "$((s / 60))" "$((s % 60))"
-  else
-    printf '%ds' "$s"
-  fi
-}
-route_choice_state() {  # <sample-index> <launch-epoch> -> router's observable stage
-  local choice="$RD/routing/$(printf '%03d' "$1").txt" mtime
-  if [ -f "$choice" ]; then
-    mtime=$(stat -c %Y "$choice" 2>/dev/null || echo 0)
-    [ "$mtime" -ge "$2" ] && { printf 'choice-written'; return; }
-  fi
-  printf 'router-running'
-}
-route_active_summary() {  # uses RPID/RREL/RSTART from the current dataset loop
-  local now idx elapsed stage out=""
-  now=$(date +%s)
-  for idx in $(printf '%s\n' "${!RPID[@]}" | sort -n); do
-    elapsed=$(( now - ${RSTART[$idx]:-$now} ))
-    stage=$(route_choice_state "$idx" "${RSTART[$idx]:-$now}")
-    [ -n "$out" ] && out+="; "
-    out+="s$idx(pid=${RPID[$idx]},try=${RREL[$idx]}/4,elapsed=$(format_elapsed "$elapsed"),stage=$stage)"
-  done
-  printf '%s' "${out:-none}"
-}
-attack_active_summary() {  # uses SPID/RELAUNCH/SSTART from the rolling loop
-  local now idx elapsed state out=""
-  now=$(date +%s)
-  for idx in $(printf '%s\n' "${!SPID[@]}" | sort -n); do
-    elapsed=$(( now - ${SSTART[$idx]:-$now} ))
-    state=$(python3 -c "import json,sys;s=json.load(open(sys.argv[1]));print(f\"{s.get('status','pending')}/iter{len(s.get('history',[]))}\")" "$RD/samples/$(printf '%03d' "$idx").json" 2>/dev/null || echo 'state-unavailable')
-    [ -n "$out" ] && out+="; "
-    out+="s$idx(pid=${SPID[$idx]},try=${RELAUNCH[$idx]}/6,elapsed=$(format_elapsed "$elapsed"),state=$state)"
-  done
-  printf '%s' "${out:-none}"
-}
-file_activity() {  # <path> -> size and time since last write
-  local f="$1" now mtime size
-  [ -f "$f" ] || { printf 'not-created'; return; }
-  now=$(date +%s); mtime=$(stat -c %Y "$f" 2>/dev/null || echo "$now")
-  size=$(stat -c %s "$f" 2>/dev/null || echo 0)
-  printf 'size=%sB,last-write=%s-ago' "$size" "$(format_elapsed "$((now - mtime))")"
 }
 # One router session that routes EXACTLY sample $1 (no internal loop), so many
 # can run concurrently without racing on "next un-routed".
@@ -247,18 +167,12 @@ router_prompt() {
 }
 route_launch() {
   timeout -k 30 600 \
-    runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
-      HOME=/home/claudeuser \
-      claude \
+    claude_as_user \
       -p "$(router_prompt "$1")" \
       --model "$AGENT_MODEL" \
       --effort "$EFFORT" \
       --dangerously-skip-permissions \
-      --verbose \
-      --output-format stream-json \
-      --include-partial-messages \
-      > >(tee -a "$DIR/split_route_td${K}.log" | python3 -u iterative_attack_orchestrator/claude_stream_log.py --prefix "[split]" --context "td$K route s$1") 2>&1 &
+      --verbose >> "$DIR/split_route_td${K}.log" 2>&1 &
 }
 for K in $(pending_ks); do
   RD=$(field "$K" run_dir); ds=$(field "$K" dataset); tg=$(field "$K" target_model)
@@ -275,8 +189,6 @@ for K in $(pending_ks); do
   fi
   mode=$(python3 -c "import json;print(json.load(open('$RD/config.json'))['routing_mode'])")
   echo "[split] td$K routing_mode=$mode"
-  recovered=$(recover_infra_errors "$RD")
-  [ "$recovered" -gt 0 ] && echo "[split] td$K restored $recovered provider-error sample(s) to pending (attempts archived under infrastructure_errors)"
 
   # Phase logs are append-only across resumes, so mark whatever is already in
   # them as seen — otherwise limit_new() re-reads a previous run's limit lines
@@ -290,21 +202,15 @@ for K in $(pending_ks); do
   #    session routes exactly its sample and stops (no internal loop), so they
   #    never race and none stops early on a turn limit.
   if [ "$mode" = "router" ]; then
-    echo "[split] $(date -Is) route phase td$K (PARALLEL, conc=$WAVE, n=$ns, detail-log=$DIR/split_route_td${K}.log)"
-    declare -A RPID RREL RSTART; RPID=(); RREL=(); RSTART=()
+    echo "[split] $(date -Is) route phase td$K (PARALLEL, conc=$WAVE, n=$ns)"
+    declare -A RPID RREL; RPID=(); RREL=()
     rstall=0; rlast=-1
     while :; do
       for idx in "${!RPID[@]}"; do
         if [ "$(sample_routed "$RD/samples/$(printf '%03d' "$idx").json")" = "1" ]; then
-          elapsed=$(( $(date +%s) - ${RSTART[$idx]:-$(date +%s)} ))
-          strategies=$(python3 -c "import json,sys;print(','.join(json.load(open(sys.argv[1])).get('strategy_ids') or []))" "$RD/samples/$(printf '%03d' "$idx").json" 2>/dev/null || echo '?')
-          echo "[split] $(date -Is) td$K route complete: sample=$idx elapsed=$(format_elapsed "$elapsed") strategies=${strategies:-?}"
-          kill_tree "${RPID[$idx]}"; unset "RPID[$idx]" "RSTART[$idx]"
+          kill_tree "${RPID[$idx]}"; unset "RPID[$idx]"
         elif ! kill -0 "${RPID[$idx]}" 2>/dev/null; then
-          pid=${RPID[$idx]}; elapsed=$(( $(date +%s) - ${RSTART[$idx]:-$(date +%s)} ))
-          wait "$pid" 2>/dev/null; exit_status=$?
-          echo "[split] $(date -Is) td$K route process exited before completion: sample=$idx pid=$pid status=$exit_status elapsed=$(format_elapsed "$elapsed") (will retry if below cap)"
-          unset "RPID[$idx]" "RSTART[$idx]"
+          unset "RPID[$idx]"
         fi
       done
       rc=$(routed_count "$RD"); [ "$rc" -ge "$ns" ] && { echo "[split] td$K all $ns routed"; break; }
@@ -313,9 +219,7 @@ for K in $(pending_ks); do
         [ "$(sample_routed "$RD/samples/$(printf '%03d' "$i").json")" = "1" ] && continue
         [ -n "${RPID[$i]:-}" ] && continue
         [ "${RREL[$i]:-0}" -ge 4 ] && continue
-        RREL[$i]=$(( ${RREL[$i]:-0} + 1)); RSTART[$i]=$(date +%s)
-        route_launch "$i"; RPID[$i]=$!
-        echo "[split] $(date -Is) td$K route launch: sample=$i pid=${RPID[$i]} attempt=${RREL[$i]}/4 timeout=10m"
+        route_launch "$i"; RPID[$i]=$!; RREL[$i]=$(( ${RREL[$i]:-0} + 1 ))
       done
       if [ "${#RPID[@]}" -eq 0 ]; then
         if limit_new "$DIR/split_route_td${K}.log"; then
@@ -331,8 +235,7 @@ for K in $(pending_ks); do
       cur=$(routed_count "$RD")
       if [ "$cur" -le "$rlast" ]; then rstall=$(( rstall + 1 )); else rstall=0; rlast=$cur; fi
       [ "$rstall" -ge 90 ] && { echo "[split] td$K routing stalled ~15min — moving on at $cur/$ns"; break; }
-      stall_for=$(( rstall * 10 ))
-      echo "[split] $(date -Is) td$K routing: $cur/$ns routed, ${#RPID[@]} in flight; no-progress=$(format_elapsed "$stall_for"); active=[$(route_active_summary)]; route-log($(file_activity "$DIR/split_route_td${K}.log"))"
+      echo "[split] td$K routing: $cur/$ns routed, ${#RPID[@]} in flight"
     done
     for idx in "${!RPID[@]}"; do kill_tree "${RPID[$idx]}"; done; wait 2>/dev/null
     echo "[split] td$K routing done: $(routed_count "$RD")/$ns routed"
@@ -341,20 +244,14 @@ for K in $(pending_ks); do
   # 3. ATTACK phase
   echo "[split] $(date -Is) attack phase td$K (mode=$ATTACK_MODE, conc=$WAVE, n=$ns)"
   if [ "$ATTACK_MODE" = "rolling" ]; then
-    declare -A SPID RELAUNCH SSTART; SPID=(); RELAUNCH=(); SSTART=()
+    declare -A SPID RELAUNCH; SPID=(); RELAUNCH=()
     stall=0; last=-1
     while :; do
       for idx in "${!SPID[@]}"; do
         if [ "$(sample_terminal "$RD/samples/$(printf '%03d' "$idx").json")" = "1" ]; then
-          elapsed=$(( $(date +%s) - ${SSTART[$idx]:-$(date +%s)} ))
-          result=$(python3 -c "import json,sys;s=json.load(open(sys.argv[1]));print(f\"status={s.get('status','?')} iters={len(s.get('history',[]))}\")" "$RD/samples/$(printf '%03d' "$idx").json" 2>/dev/null || echo 'status=? iters=?')
-          echo "[split] $(date -Is) td$K attack complete: sample=$idx elapsed=$(format_elapsed "$elapsed") $result"
-          kill_tree "${SPID[$idx]}"; unset "SPID[$idx]" "SSTART[$idx]"
+          kill_tree "${SPID[$idx]}"; unset "SPID[$idx]"
         elif ! kill -0 "${SPID[$idx]}" 2>/dev/null; then
-          pid=${SPID[$idx]}; elapsed=$(( $(date +%s) - ${SSTART[$idx]:-$(date +%s)} ))
-          wait "$pid" 2>/dev/null; exit_status=$?
-          echo "[split] $(date -Is) td$K attack process exited before terminal result: sample=$idx pid=$pid status=$exit_status elapsed=$(format_elapsed "$elapsed") (will retry if below cap)"
-          unset "SPID[$idx]" "SSTART[$idx]"
+          unset "SPID[$idx]"
         fi
       done
       read t n < <(terminal_count "$RD"); [ "$t" = "$n" ] && { echo "[split] td$K all $n terminal"; break; }
@@ -363,9 +260,7 @@ for K in $(pending_ks); do
         [ "$(sample_terminal "$RD/samples/$(printf '%03d' "$i").json")" = "1" ] && continue
         [ -n "${SPID[$i]:-}" ] && continue
         [ "${RELAUNCH[$i]:-0}" -ge 6 ] && continue
-        RELAUNCH[$i]=$(( ${RELAUNCH[$i]:-0} + 1)); SSTART[$i]=$(date +%s)
-        launch "$i"; SPID[$i]=$!
-        echo "[split] $(date -Is) td$K attack launch: sample=$i pid=${SPID[$i]} attempt=${RELAUNCH[$i]}/6 timeout=40m"
+        launch "$i"; SPID[$i]=$!; RELAUNCH[$i]=$(( ${RELAUNCH[$i]:-0} + 1 ))
       done
       if [ "${#SPID[@]}" -eq 0 ]; then
         if limit_new "$DIR/split_attack_td${K}.log"; then
@@ -381,8 +276,7 @@ for K in $(pending_ks); do
       cur=$(iters_count "$RD")
       if [ "$cur" -le "$last" ]; then stall=$(( stall + 1 )); else stall=0; last=$cur; fi
       [ "$stall" -ge 240 ] && { echo "[split] td$K rolling stalled ~60min — aborting dataset"; break; }
-      stall_for=$(( stall * 15 ))
-      echo "[split] $(date -Is) td$K rolling: $t/$n terminal, ${#SPID[@]} in flight, $cur total-iters; no-progress=$(format_elapsed "$stall_for"); active=[$(attack_active_summary)]; attack-log($(file_activity "$DIR/split_attack_td${K}.log"))"
+      echo "[split] td$K rolling: $t/$n terminal, ${#SPID[@]} in flight, $cur iters"
     done
     for idx in "${!SPID[@]}"; do kill_tree "${SPID[$idx]}"; done; wait 2>/dev/null
   else
@@ -427,11 +321,6 @@ for K in $(pending_ks); do
   read t n < <(terminal_count "$RD")
   if [ "$t" -lt "$n" ]; then
     echo "[split] td$K INCOMPLETE ($t/$n terminal) — skipping digest, leaving status='pending' for resume"
-    continue
-  fi
-  oc=$(other_count "$RD")
-  if [ "$oc" -gt 0 ]; then
-    echo "[split] td$K has $oc provider/infrastructure error(s) — skipping digest and leaving status='pending' for retry"
     continue
   fi
   echo "[split] $(date -Is) digest td$K ($t/$n terminal)"

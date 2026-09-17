@@ -1290,26 +1290,6 @@ def cmd_submit(args: argparse.Namespace) -> int:
     if _tgt_key and not os.environ.get("ANTHROPIC_API_KEY"):
         os.environ["ANTHROPIC_API_KEY"] = _tgt_key
 
-    # Claude Code may itself run through a DeepSeek-compatible relay. Keep that
-    # attacker/router credential separate from the DeepSeek TARGET credential:
-    # the parallel drivers preserve the latter under this PIMiner-only name and
-    # remove DEEPSEEK_API_KEY from Claude Code's environment. Restore it only at
-    # the target-call boundary in this submit subprocess.
-    if cfg["target_model"].lower().startswith("deepseek"):
-        # Claude Code / DMX may authenticate with an Anthropic bearer token and
-        # custom base URL. Neither belongs on the DeepSeek target request: the
-        # Anthropic SDK recognizes ANTHROPIC_AUTH_TOKEN even when an explicit
-        # api_key is supplied, which can otherwise send conflicting credentials.
-        os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-        os.environ.pop("ANTHROPIC_BASE_URL", None)
-
-        _tgt_deepseek_key = os.environ.get("PIMINER_TARGET_DEEPSEEK_API_KEY")
-        if _tgt_deepseek_key:
-            os.environ["DEEPSEEK_API_KEY"] = _tgt_deepseek_key
-            print("TARGET_AUTH_SOURCE=PIMINER_TARGET_DEEPSEEK_API_KEY", file=sys.stderr)
-        else:
-            print("TARGET_AUTH_SOURCE=DEEPSEEK_API_KEY", file=sys.stderr)
-
     t0 = time.time()
     error_str = ""
     if cfg["dataset"] == "ipi_arena":
