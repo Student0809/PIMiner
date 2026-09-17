@@ -83,3 +83,40 @@ The mutable source of truth is `<repo_root>/strategy_library/`; train snapshots 
 - It does not declare a sample "unhittable" or stop early on a 0% partial result.
 - It does not write attack attempts in batched form across samples — iterative attack is sample-major with per-sample isolation.
 - **In test mode**, it does not write to `strategy_library/` under any circumstance, even if Phase 2 finds hits. The frozen-library guard fires inside the orchestrator (exit code 4), not just the slash command, so accidental digest invocations are rejected at the source.
+
+## 使用 ChatGPT 订阅运行 Attacker / Router
+
+安装官方 Codex CLI（`npm install -g @openai/codex`），用执行脚本的同一个系统用户运行
+`codex login`，在浏览器中登录 ChatGPT；无浏览器服务器可以使用 `codex login --device-auth`。
+`codex login status` 应显示 `Logged in using ChatGPT`。订阅访问受账户的 Codex 额度及模型权限限制。
+
+```bash
+# 按原流程生成实验计划
+python piminer_plan.py experiments/main_exp.yaml
+
+# 训练：Attacker、Router、digest 全部使用 Codex 的订阅登录
+PIM_AGENT_BACKEND=codex PIM_WAVE_SIZE=2 PIM_EFFORT=high \
+  bash piminer_train_parallel.sh eval_results/pim_train/main_exp
+
+# 测试：Attacker、Router 使用 Codex，策略库保持冻结
+PIM_AGENT_BACKEND=codex PIM_WAVE_SIZE=2 PIM_DATASET_CONC=1 PIM_EFFORT=low \
+  bash piminer_test_parallel.sh eval_results/pim_test/main_exp
+```
+
+运行目录以 YAML 的 `name` 字段为准。`PIM_AGENT_MODEL` 可以显式指定账户可用的 GPT/Codex
+模型；不设置时使用 Codex CLI 默认配置的模型。训练的默认 effort 是 `xhigh`，测试是 `low`，
+可以用 `PIM_EFFORT` 调整为所选模型支持的值。后端默认为 `claude`，原有调用方式仍然可用。
+
+Codex 后端以当前系统用户启动，不需要 `claudeuser`。启动前会检查 ChatGPT 登录，拒绝 API key
+登录。它不会读取 `.claude/settings.json` 中的 Claude 模型配置；`.claude/commands/step.md` 和
+`route.md` 仍作为共用的协议文件读取，`/digest` 则被展开成完整指令。digest 的项目记忆保存在
+`eval_results/codex_memory/`。脚本沿用原有无人值守执行权限，因此应在专用实验环境中运行。
+
+Target 仍通过原有 provider API 运行，不使用 Attacker/Router 的订阅额度。原有 `.env` 中的
+`OPENAI_API_KEY` 会隔离到 `PIMINER_TARGET_OPENAI_API_KEY`，只在 `submit` 的 Target 调用中
+恢复；也可以直接配置后者。`OPENAI_BASE_URL`、`OPENAI_ORG_ID`、`OPENAI_PROJECT_ID` 同样隔离，
+其显式 Target 配置名是在前面加 `PIMINER_TARGET_`。Codex 调用会移除 `CODEX_API_KEY`，并强制
+使用 ChatGPT 登录。日志保留 Codex JSONL，终端显示简短的执行进度和错误。
+
+官方说明：[登录认证](https://learn.chatgpt.com/docs/auth)、
+[非交互执行](https://learn.chatgpt.com/docs/non-interactive-mode)。

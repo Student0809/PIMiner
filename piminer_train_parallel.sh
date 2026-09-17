@@ -49,22 +49,21 @@ fi
 MAXITERS=$(python3 -c "import json;print(json.load(open('$PLAN'))['max_iters'])")
 WAVE="${PIM_WAVE_SIZE:-5}"             # concurrency (in-flight sessions)
 ATTACK_MODE="${PIM_ATTACK_MODE:-rolling}"   # rolling | wave
-# Explicit PIM_AGENT_MODEL wins; otherwise honor the project's Claude Code
-# provider/model configuration (e.g. DeepSeek), then fall back to Claude.
-PROJECT_AGENT_MODEL=""
-if [ -f .claude/settings.json ]; then
-  PROJECT_AGENT_MODEL=$(python3 -c "import json;print(json.load(open('.claude/settings.json')).get('env',{}).get('ANTHROPIC_MODEL',''))" 2>/dev/null || true)
-fi
-AGENT_MODEL="${PIM_AGENT_MODEL:-${PROJECT_AGENT_MODEL:-claude-opus-4-7}}"
+export PIM_AGENT_BACKEND="${PIM_AGENT_BACKEND:-claude}"
+case "$PIM_AGENT_BACKEND" in
+  codex) AGENT_MODEL="${PIM_AGENT_MODEL:-}" ;;
+  claude)
+    PROJECT_AGENT_MODEL=""
+    if [ -f .claude/settings.json ]; then
+      PROJECT_AGENT_MODEL=$(python3 -c "import json;print(json.load(open('.claude/settings.json')).get('env',{}).get('ANTHROPIC_MODEL',''))" 2>/dev/null || true)
+    fi
+    AGENT_MODEL="${PIM_AGENT_MODEL:-${PROJECT_AGENT_MODEL:-claude-opus-4-7}}" ;;
+  *) echo "Unknown PIM_AGENT_BACKEND: $PIM_AGENT_BACKEND" >&2; exit 1 ;;
+esac
+python3 iterative_attack_orchestrator/agent_cli.py --check || exit 1
 EFFORT="${PIM_EFFORT:-xhigh}"          # training reasoning effort (xhigh = full refinement)
-echo "[split] attacker/router=ClaudeCode($AGENT_MODEL,effort=$EFFORT); targets=OpenAI/target-Anthropic; conc=$WAVE; mode=$ATTACK_MODE"
+echo "[split] attacker/router=$PIM_AGENT_BACKEND(${AGENT_MODEL:-CLI-default},effort=$EFFORT); targets=OpenAI/target-Anthropic; conc=$WAVE; mode=$ATTACK_MODE"
 
-claude_as_user() {
-  runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
-      HOME=/home/claudeuser \
-      claude "$@"
-}
 
 field() { python3 - "$PLAN" "$1" "$2" <<'PY'
 import json,sys
@@ -122,7 +121,7 @@ PY
 # remaining dataset is consumed doing zero work. We scan ONLY the bytes appended
 # to a phase log since the last check, so a stale limit line in the tail can't
 # re-trigger forever.
-LIMIT_RE="session limit|usage limit|rate limit|limit reached|exceeded your"
+LIMIT_RE="session limit|usage limit|rate limit|limit reached|exceeded your|usage_limit_reached|too many requests|insufficient_quota"
 declare -A LOGPOS
 seed_logpos() {  # <logfile> — mark everything currently in the log as already-seen
   local lf="$1"
@@ -152,13 +151,14 @@ quota_pause() {  # block until a cheap probe session succeeds again
   echo "[split] $(date -Is) USAGE LIMIT detected — pausing driver (probe every $((nap/60))min)"
   while :; do
     sleep "$nap"; waited=$(( waited + nap ))
+    local probe_status=0
     timeout -k 10 180 \
-        claude_as_user \
+        python3 iterative_attack_orchestrator/agent_cli.py \
         -p "Reply with exactly: ok" \
         --model "$AGENT_MODEL" \
         --dangerously-skip-permissions \
-        > "$probe" 2>&1
-    if ! grep -qEi "$LIMIT_RE" "$probe"; then
+        > "$probe" 2>&1 || probe_status=$?
+    if [ "$probe_status" -eq 0 ] && ! grep -qEi "$LIMIT_RE" "$probe"; then
       echo "[split] $(date -Is) quota restored after ~$(( waited / 60 ))min — resuming"
       return 0
     fi
@@ -173,10 +173,7 @@ attacker_prompt() {
 }
 launch() {
   timeout -k 30 2400 \
-    runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
-      HOME=/home/claudeuser \
-      claude \
+    python3 iterative_attack_orchestrator/agent_cli.py \
       -p "$(attacker_prompt "$1")" \
       --model "$AGENT_MODEL" \
       --effort "$EFFORT" \
@@ -247,10 +244,7 @@ router_prompt() {
 }
 route_launch() {
   timeout -k 30 600 \
-    runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
-      HOME=/home/claudeuser \
-      claude \
+    python3 iterative_attack_orchestrator/agent_cli.py \
       -p "$(router_prompt "$1")" \
       --model "$AGENT_MODEL" \
       --effort "$EFFORT" \
@@ -437,7 +431,7 @@ for K in $(pending_ks); do
   echo "[split] $(date -Is) digest td$K ($t/$n terminal)"
   digest_ok=1
   timeout -k 30 1800 \
-    claude_as_user \
+    python3 iterative_attack_orchestrator/agent_cli.py \
     -p "/digest $RD" \
     --model "$AGENT_MODEL" \
     --effort "$EFFORT" \
@@ -448,7 +442,7 @@ for K in $(pending_ks); do
     quota_pause
     digest_ok=1
     timeout -k 30 1800 \
-  claude_as_user \
+  python3 iterative_attack_orchestrator/agent_cli.py \
     -p "/digest $RD" \
     --model "$AGENT_MODEL" \
     --effort "$EFFORT" \

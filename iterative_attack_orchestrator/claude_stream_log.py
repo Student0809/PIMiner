@@ -56,7 +56,19 @@ def main() -> int:
             continue
 
         event_type = event.get("type")
-        if event_type == "system":
+        if event_type in ("thread.started", "turn.started", "turn.completed", "turn.failed", "error"):
+            detail = event.get("error") or event.get("message") or event.get("usage") or ""
+            emit(prefix, context, f"{event_type}: {compact(detail)}")
+        elif event_type in ("item.started", "item.updated", "item.completed"):
+            item = event.get("item") or {}
+            kind = item.get("type", "unknown")
+            if kind == "reasoning":
+                if event_type == "item.completed":
+                    emit(prefix, context, "reasoning complete")
+                continue
+            detail = item.get("command") or item.get("text") or item.get("changes") or item.get("message") or ""
+            emit(prefix, context, f"{event_type}/{kind}: {compact(detail)}")
+        elif event_type == "system":
             subtype = event.get("subtype", "event")
             # Emitted for every reasoning-token update by some providers. Keep
             # it in the raw JSONL written by tee, but suppress it from the

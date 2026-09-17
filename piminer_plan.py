@@ -81,7 +81,7 @@ def _target_key_available(target_model: str) -> bool:
     """
     m = target_model.lower()
     if m.startswith(("gpt-", "o1", "o3", "o4", "chatgpt")):
-        names = ("OPENAI_API_KEY",)
+        names = ("OPENAI_API_KEY", "PIMINER_TARGET_OPENAI_API_KEY")
     elif m.startswith("deepseek"):
         names = ("DEEPSEEK_API_KEY",)
     elif m.startswith("gemini"):

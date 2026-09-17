@@ -80,13 +80,18 @@ lib_hash > "$LIB_MANIFEST"
 echo "[test] froze strategy_library manifest ($(wc -l < "$LIB_MANIFEST") files) — will verify after each dataset"
 WAVE="${PIM_WAVE_SIZE:-5}"             # per-dataset sample concurrency (in-flight sessions)
 ATTACK_MODE="${PIM_ATTACK_MODE:-rolling}"   # rolling | wave
-# Explicit PIM_AGENT_MODEL wins; otherwise honor the project's Claude Code
-# provider/model configuration (e.g. DeepSeek), then fall back to Claude.
-PROJECT_AGENT_MODEL=""
-if [ -f .claude/settings.json ]; then
-  PROJECT_AGENT_MODEL=$(python3 -c "import json;print(json.load(open('.claude/settings.json')).get('env',{}).get('ANTHROPIC_MODEL',''))" 2>/dev/null || true)
-fi
-AGENT_MODEL="${PIM_AGENT_MODEL:-${PROJECT_AGENT_MODEL:-claude-opus-4-7}}"
+export PIM_AGENT_BACKEND="${PIM_AGENT_BACKEND:-claude}"
+case "$PIM_AGENT_BACKEND" in
+  codex) AGENT_MODEL="${PIM_AGENT_MODEL:-}" ;;
+  claude)
+    PROJECT_AGENT_MODEL=""
+    if [ -f .claude/settings.json ]; then
+      PROJECT_AGENT_MODEL=$(python3 -c "import json;print(json.load(open('.claude/settings.json')).get('env',{}).get('ANTHROPIC_MODEL',''))" 2>/dev/null || true)
+    fi
+    AGENT_MODEL="${PIM_AGENT_MODEL:-${PROJECT_AGENT_MODEL:-claude-opus-4-7}}" ;;
+  *) echo "Unknown PIM_AGENT_BACKEND: $PIM_AGENT_BACKEND" >&2; exit 1 ;;
+esac
+python3 iterative_attack_orchestrator/agent_cli.py --check || exit 1
 EFFORT="${PIM_EFFORT:-low}"            # attacker/router reasoning effort (test = low to save quota; train stays xhigh)
 # Test datasets are FROZEN (no library mutation), so unlike training they have no
 # inter-dataset dependency and ALL target models can be evaluated concurrently.
@@ -94,7 +99,7 @@ EFFORT="${PIM_EFFORT:-low}"            # attacker/router reasoning effort (test 
 # Total in-flight attacker sessions ~= DATASET_CONC * WAVE — size both for your quota.
 DATASET_CONC="${PIM_DATASET_CONC:-0}"
 RESULTS_LOCK="$DIR/.results.lock"      # serializes test_results.json + test_plan.json writes
-echo "[test] attacker/router=ClaudeCode($AGENT_MODEL,effort=$EFFORT); targets=OpenAI/target-Anthropic; per-dataset conc=$WAVE; mode=$ATTACK_MODE; threat=$THREAT (FROZEN library); datasets in parallel"
+echo "[test] attacker/router=$PIM_AGENT_BACKEND(${AGENT_MODEL:-CLI-default},effort=$EFFORT); targets=OpenAI/target-Anthropic; per-dataset conc=$WAVE; mode=$ATTACK_MODE; threat=$THREAT (FROZEN library); datasets in parallel"
 
 field() { python3 - "$PLAN" "$1" "$2" <<'PY'
 import json,sys
@@ -152,10 +157,7 @@ attacker_prompt() {
 }
 launch() {
   timeout -k 30 2400 \
-    runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
-      HOME=/home/claudeuser \
-      claude -p "$(attacker_prompt "$1")" \
+    python3 iterative_attack_orchestrator/agent_cli.py -p "$(attacker_prompt "$1")" \
       --model "$AGENT_MODEL" \
       --effort "$EFFORT" \
       --dangerously-skip-permissions \
@@ -225,10 +227,7 @@ router_prompt() {
 }
 route_launch() {  # launch a timed-out single-sample router session for $1 in background
   timeout -k 30 600 \
-    runuser -u claudeuser -- \
-    env -u IS_SANDBOX -u DEEPSEEK_API_KEY \
-      HOME=/home/claudeuser \
-      claude -p "$(router_prompt "$1")" \
+    python3 iterative_attack_orchestrator/agent_cli.py -p "$(router_prompt "$1")" \
       --model "$AGENT_MODEL" \
       --effort "$EFFORT" \
       --dangerously-skip-permissions \

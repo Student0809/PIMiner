@@ -672,6 +672,8 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     config = {
         "dataset": args.dataset,
+        "agent_backend": os.environ.get("PIM_AGENT_BACKEND", "claude"),
+        "agent_model": os.environ.get("PIM_AGENT_MODEL") or None,
         "target_model": args.target_model,
         "reasoning_effort": args.reasoning_effort,
         "max_iters": args.max_iters,
@@ -736,6 +738,8 @@ def cmd_init(args: argparse.Namespace) -> int:
         "n_samples": len(samples),
         "max_iters": args.max_iters,
         "dataset": args.dataset,
+        "agent_backend": os.environ.get("PIM_AGENT_BACKEND", "claude"),
+        "agent_model": os.environ.get("PIM_AGENT_MODEL") or None,
         "target_model": args.target_model,
         "routing_mode": routing_mode,
         "registered_strategies": [s["id"] for s in registered_strategies],
@@ -1286,6 +1290,12 @@ def cmd_submit(args: argparse.Namespace) -> int:
     # Claude Code session and cannot change the parent session's auth, so the
     # attacker/router stay on Max while an Anthropic target (e.g. claude-haiku-*)
     # authenticates with the API key. OpenAI targets need no such handling.
+    # Codex uses ChatGPT auth; restore the separate target API configuration here.
+    for key in ("OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_ORG_ID", "OPENAI_PROJECT_ID"):
+        target_value = os.environ.get("PIMINER_TARGET_" + key)
+        if target_value:
+            os.environ[key] = target_value
+
     _tgt_key = os.environ.get("PIMINER_TARGET_ANTHROPIC_API_KEY")
     if _tgt_key and not os.environ.get("ANTHROPIC_API_KEY"):
         os.environ["ANTHROPIC_API_KEY"] = _tgt_key
@@ -1486,7 +1496,8 @@ def cmd_summary(args: argparse.Namespace) -> int:
     n_pending = sum(1 for s in samples if s["status"] == "pending")
     n_valid = n_hits + n_miss
     summary = {
-        "attacker": "claude_code",
+        "attacker": "codex" if cfg.get("agent_backend") == "codex" else "claude_code",
+        "agent_model": cfg.get("agent_model"),
         "target_model": cfg["target_model"],
         "dataset": cfg["dataset"],
         "max_iters": cfg["max_iters"],
