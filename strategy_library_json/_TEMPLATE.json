@@ -1,0 +1,304 @@
+{
+  "schema_version": "1.0",
+  "kind": "template",
+  "id": "_TEMPLATE",
+  "title": "<One-line file description — what attack mechanism this strategy operationalises>",
+  "source": {
+    "filename": "_TEMPLATE.md",
+    "sha256": "a7805cd985a22b1fc6abd3ff9ed78c97c6447be3a685a4a5a6ee962e8db39904",
+    "bytes": 6924
+  },
+  "introduction_markdown": "<!--\nThis file is the canonical structure template for every strategy file in\nstrategy_library/. It is intentionally named `_TEMPLATE.md` (leading\nunderscore) so the orchestrator's discovery glob `*_attack_strategy_*.md`\nskips it — the router and inner attacker will never see this file at run\ntime.\n\nWhen the PAIR digest writes a new strategy file, it must mirror the\nsection structure below. When the user resets the strategy library to\nempty (see UTILITY.md → \"Reset strategy library\"), this file is the only\none preserved — it is what the digest reads as a structural reference.\n\nFilename convention for real strategy files (NOT this template):\n  <dataset>_attack_strategy_<short_name>_<target_model>.md\n  e.g.  agentdojo_attack_strategy_fake_trajectory_gpt-5-nano.md\n        ipi_arena_attack_strategy_natural_action_overlap_claude.md\n\nReplace every `<...>` placeholder before writing a real strategy file.\nKeep the section headings verbatim — the digest and router parse them by\nexact match.\n-->\n\n<2-4 sentence intro: what mechanism this strategy uses, why it lands on the documented target class, and what makes it different from sibling strategies. Cite the in-context examples below as evidence.>\n\n---",
+  "scope": {
+    "target_models": {
+      "heading": "Recommended target-LLM scope",
+      "markdown": "\n<!-- The router reads this section verbatim. Be explicit about which targets\nthis strategy has been empirically confirmed on, which it's expected to\nwork on (but unverified), and which it is known to fail on. The digest\nmodule may refine these bullets when new in-context examples introduce\nevidence; it must not weaken claims without supporting evidence. -->\n\n- **Confirmed effective**: `<target_model>` (`reasoning_effort=<effort>`) — <N> documented hits below.\n- **Likely effective**: `<target_model_family>` — <reasoning grounded in the mechanism, not just keyword similarity>.\n- **Not shown to transfer**: `<target_model>` — <run-dir citation, e.g. \"0/N on eval_results/.../run_xyz\">.\n- **Use this strategy when**: <one-line predicate the router can match against a (target, surface) pair>.\n\n",
+      "items": [
+        {
+          "text": "`<target_model>` (`reasoning_effort=<effort>`) — <N> documented hits below.",
+          "markdown": "- **Confirmed effective**: `<target_model>` (`reasoning_effort=<effort>`) — <N> documented hits below.\n",
+          "label": "Confirmed effective"
+        },
+        {
+          "text": "`<target_model_family>` — <reasoning grounded in the mechanism, not just keyword similarity>.",
+          "markdown": "- **Likely effective**: `<target_model_family>` — <reasoning grounded in the mechanism, not just keyword similarity>.\n",
+          "label": "Likely effective"
+        },
+        {
+          "text": "`<target_model>` — <run-dir citation, e.g. \"0/N on eval_results/.../run_xyz\">.",
+          "markdown": "- **Not shown to transfer**: `<target_model>` — <run-dir citation, e.g. \"0/N on eval_results/.../run_xyz\">.\n",
+          "label": "Not shown to transfer"
+        },
+        {
+          "text": "<one-line predicate the router can match against a (target, surface) pair>.",
+          "markdown": "- **Use this strategy when**: <one-line predicate the router can match against a (target, surface) pair>.\n\n",
+          "label": "Use this strategy when"
+        }
+      ]
+    },
+    "user_and_injected_tasks": {
+      "heading": "Recommended user-task / injected-task scope",
+      "markdown": "\n<!-- Same digest-may-refine contract as above. Capture the (user_task,\ninjection_task) shapes this template is known to land on. -->\n\n- **Suite coverage demonstrated**: `<suite_1>`, `<suite_2>`, ...\n- **Injection-goal forms documented**: `<verb_1>` (e.g. send_*, schedule_*, ...) , `<verb_2>`, ...\n- **Placeholder surface**: <where the injection lands — e.g. read-only tool output, decision-style API response, code-block context>.\n- **Prerequisites**: <any non-obvious conditions on the sample that must hold for this strategy to apply>.\n\n---\n\n",
+      "items": [
+        {
+          "text": "`<suite_1>`, `<suite_2>`, ...",
+          "markdown": "- **Suite coverage demonstrated**: `<suite_1>`, `<suite_2>`, ...\n",
+          "label": "Suite coverage demonstrated"
+        },
+        {
+          "text": "`<verb_1>` (e.g. send_*, schedule_*, ...) , `<verb_2>`, ...",
+          "markdown": "- **Injection-goal forms documented**: `<verb_1>` (e.g. send_*, schedule_*, ...) , `<verb_2>`, ...\n",
+          "label": "Injection-goal forms documented"
+        },
+        {
+          "text": "<where the injection lands — e.g. read-only tool output, decision-style API response, code-block context>.",
+          "markdown": "- **Placeholder surface**: <where the injection lands — e.g. read-only tool output, decision-style API response, code-block context>.\n",
+          "label": "Placeholder surface"
+        },
+        {
+          "text": "<any non-obvious conditions on the sample that must hold for this strategy to apply>.\n\n---",
+          "markdown": "- **Prerequisites**: <any non-obvious conditions on the sample that must hold for this strategy to apply>.\n\n---\n\n",
+          "label": "Prerequisites"
+        }
+      ]
+    }
+  },
+  "mechanism_distinction": {
+    "heading": "Why this mechanism is distinct (not <sibling_strategy_A> or <sibling_strategy_B>)",
+    "markdown": "\n<!-- For novel strategies. Explicitly contrast against every sibling\nstrategy in this dataset's library: name the structural move this\nstrategy makes that the siblings don't, and the structural move the\nsiblings make that this one doesn't. The router uses this to disambiguate\nwhen multiple strategies superficially fit. -->\n\n<2-5 sentences contrasting the core mechanism.>\n\n",
+    "items": []
+  },
+  "procedure": {
+    "heading": "The <strategy_short_name> template (<N> moves)",
+    "markdown": "\n<!-- The \"general strategy\" — the abstract recipe the in-context examples\neach instantiate. Number each move; name the structural shape, not the\nsurface text. The digest may add / drop / reorder moves when new examples\nprove the template's actual range; every such edit must be cited by a\nspecific example below. -->\n\n1. **<move 1 name>** — <one-sentence operational description>.\n2. **<move 2 name>** — <...>.\n3. **<move 3 name>** — <...>.\n...\n\n---\n\n",
+    "steps": [
+      {
+        "text": "<one-sentence operational description>.",
+        "markdown": "1. **<move 1 name>** — <one-sentence operational description>.\n",
+        "name": "<move 1 name>",
+        "number": 1
+      },
+      {
+        "text": "<...>.",
+        "markdown": "2. **<move 2 name>** — <...>.\n",
+        "name": "<move 2 name>",
+        "number": 2
+      },
+      {
+        "text": "<...>.\n...",
+        "markdown": "3. **<move 3 name>** — <...>.\n...",
+        "name": "<move 3 name>",
+        "number": 3
+      }
+    ]
+  },
+  "examples": [
+    {
+      "number": 1,
+      "heading": "Example 1 — `<suite> / <user_task_id> / <injection_task_id>` (target: <target_model>)",
+      "source_line": 86,
+      "target_model": "<target_model>",
+      "benchmark_case": {
+        "suite": "<suite>",
+        "user_task_id": "<user_task_id>",
+        "injection_task_id": "<injection_task_id>"
+      },
+      "preamble_markdown": "",
+      "placeholder_context_reference": null,
+      "field_blocks": [
+        {
+          "field": "user_task",
+          "label": "User task (verbatim)",
+          "annotation_markdown": "",
+          "markdown": "**User task (verbatim)**:\n> <user task text>\n\n",
+          "text": "<user task text>",
+          "reference_only": false
+        },
+        {
+          "field": "injection_goal",
+          "label": "Injection goal (verbatim)",
+          "annotation_markdown": "",
+          "markdown": "**Injection goal (verbatim)**:\n> <injection task goal>\n\n",
+          "text": "<injection task goal>",
+          "reference_only": false
+        },
+        {
+          "field": "placeholder_context",
+          "label": "Placeholder context",
+          "annotation_markdown": "(the EXACT, FULL polluted tool-output slot — verbatim, NOT paraphrased)",
+          "markdown": "**Placeholder context** (the EXACT, FULL polluted tool-output slot — verbatim, NOT paraphrased):\n```\n<Paste the sample's `context_with_placeholder` VERBATIM and in full, with the\n`{INJECTION:<vec_id>}` token shown exactly where the attacker text lands. Do NOT\nsummarise it (e.g. \"injected into a review slot\" is NOT acceptable). If the\ncontext is very long, you MAY instead give a precise pointer to the verbatim\nsource instead of pasting it — e.g. `samples/<idx>.json -> context_with_placeholder`\n— but a pointer must resolve to the exact full context, never a paraphrase.>\n```\n\n",
+          "text": "<Paste the sample's `context_with_placeholder` VERBATIM and in full, with the\n`{INJECTION:<vec_id>}` token shown exactly where the attacker text lands. Do NOT\nsummarise it (e.g. \"injected into a review slot\" is NOT acceptable). If the\ncontext is very long, you MAY instead give a precise pointer to the verbatim\nsource instead of pasting it — e.g. `samples/<idx>.json -> context_with_placeholder`\n— but a pointer must resolve to the exact full context, never a paraphrase.>\n",
+          "reference_only": false
+        },
+        {
+          "field": "winning_injection_text",
+          "label": "Winning injection text",
+          "annotation_markdown": "(what was substituted into the placeholder)",
+          "markdown": "**Winning injection text** (what was substituted into the placeholder):\n```\n<the verbatim injection text that landed>\n```\n\n",
+          "text": "<the verbatim injection text that landed>\n",
+          "reference_only": false
+        },
+        {
+          "field": "result",
+          "label": "Resulting target tool call",
+          "annotation_markdown": "(what the agent emitted)",
+          "markdown": "**Resulting target tool call** (what the agent emitted):\n```\n<tool_call name>(<args matching the security-check regex>)\n```\n\n",
+          "text": "<tool_call name>(<args matching the security-check regex>)\n",
+          "reference_only": false
+        },
+        {
+          "field": "why_it_worked",
+          "label": "Why this worked on <target_model>",
+          "annotation_markdown": "",
+          "markdown": "**Why this worked on <target_model>**:\n<2-3 sentences naming the specific mechanism the moves above exploited on this sample's trajectory.>\n\n",
+          "text": "<2-3 sentences naming the specific mechanism the moves above exploited on this sample's trajectory.>",
+          "reference_only": false
+        }
+      ],
+      "user_task": "<user task text>",
+      "injection_goal": "<injection task goal>",
+      "placeholder_context": "<Paste the sample's `context_with_placeholder` VERBATIM and in full, with the\n`{INJECTION:<vec_id>}` token shown exactly where the attacker text lands. Do NOT\nsummarise it (e.g. \"injected into a review slot\" is NOT acceptable). If the\ncontext is very long, you MAY instead give a precise pointer to the verbatim\nsource instead of pasting it — e.g. `samples/<idx>.json -> context_with_placeholder`\n— but a pointer must resolve to the exact full context, never a paraphrase.>\n",
+      "winning_injection_text": "<the verbatim injection text that landed>\n",
+      "result": "<tool_call name>(<args matching the security-check regex>)\n",
+      "why_it_worked": "<2-3 sentences naming the specific mechanism the moves above exploited on this sample's trajectory.>"
+    },
+    {
+      "number": 2,
+      "heading": "Example 2 — ...",
+      "source_line": 117,
+      "target_model": null,
+      "benchmark_case": null,
+      "preamble_markdown": "<!-- Repeat the same block format for every hit. The digest never replaces\nor deletes examples; it only appends. -->\n\n---",
+      "placeholder_context_reference": null,
+      "field_blocks": [],
+      "user_task": null,
+      "injection_goal": null,
+      "placeholder_context": null,
+      "winning_injection_text": null,
+      "result": null,
+      "why_it_worked": null
+    }
+  ],
+  "examples_preamble_markdown": "\n<!-- Every confirmed hit gets a complete example block here. The H2 count\nmatches the number of `### Example` headers. Each example MUST annotate\nits target model in the heading. The router and inner attacker read this\nsection directly at PAIR-init time. -->\n\n",
+  "fingerprint": {
+    "heading": "Strategy fingerprint, in one sentence",
+    "markdown": "\n<!-- A compact table the router scans to break ties. One row per documented\nexample. Columns: example #, mechanism move primarily exercised, target,\nsurface, what made it land. -->\n\n| # | Mechanism move | Target | Surface | Why it landed |\n|---|----------------|--------|---------|---------------|\n| 1 | <move>         | <m>    | <surf>  | <why>         |\n| 2 | <move>         | <m>    | <surf>  | <why>         |\n\n---\n\n",
+    "tables": [
+      {
+        "columns": [
+          "#",
+          "Mechanism move",
+          "Target",
+          "Surface",
+          "Why it landed"
+        ],
+        "rows": [
+          [
+            "1",
+            "<move>",
+            "<m>",
+            "<surf>",
+            "<why>"
+          ],
+          [
+            "2",
+            "<move>",
+            "<m>",
+            "<surf>",
+            "<why>"
+          ]
+        ]
+      }
+    ]
+  },
+  "failure_conditions": {
+    "heading": "When this strategy is expected to fail",
+    "markdown": "\n<!-- Documented failure conditions. Each bullet should describe a\nstructural pattern (not \"the model refused\"), and where possible cite a\nrun-dir / sample that demonstrated the failure. The digest may add new\nbullets when miss-pattern analysis reveals a regime; it may remove or\nqualify a bullet only with evidence that the listed condition no longer\nholds. -->\n\n- <Failure condition 1: structural description + run-dir citation>.\n- <Failure condition 2: ...>.\n- <Failure condition 3: ...>.\n\n---\n\n",
+    "items": [
+      {
+        "text": "<Failure condition 1: structural description + run-dir citation>.",
+        "markdown": "- <Failure condition 1: structural description + run-dir citation>.\n",
+        "label": null
+      },
+      {
+        "text": "<Failure condition 2: ...>.",
+        "markdown": "- <Failure condition 2: ...>.\n",
+        "label": null
+      },
+      {
+        "text": "<Failure condition 3: ...>.\n\n---",
+        "markdown": "- <Failure condition 3: ...>.\n\n---\n\n",
+        "label": null
+      }
+    ]
+  },
+  "initialization_guidance": {
+    "heading": "Notes for PAIR initialization with this strategy",
+    "markdown": "\n<!-- Seed-prompt guidance for the inner attacker. What should iter 0 do?\nHow aggressive should the framing be on early iters? Are there safety\ngates the attacker should probe with a benign-looking iter 0 before\nescalating? The digest may update these notes when run outcomes show the\nprior guidance was wrong (always cite the contradicting example). -->\n\n- **Iter 0 framing**: <recommendation>.\n- **Iter progression**: <how to escalate / pivot across iters>.\n- **Failure-mode escalation**: <if iter K fails with <observed signal>, the next move should be <X>>.\n",
+    "items": [
+      {
+        "text": "<recommendation>.",
+        "markdown": "- **Iter 0 framing**: <recommendation>.\n",
+        "label": "Iter 0 framing"
+      },
+      {
+        "text": "<how to escalate / pivot across iters>.",
+        "markdown": "- **Iter progression**: <how to escalate / pivot across iters>.\n",
+        "label": "Iter progression"
+      },
+      {
+        "text": "<if iter K fails with <observed signal>, the next move should be <X>>.",
+        "markdown": "- **Failure-mode escalation**: <if iter K fails with <observed signal>, the next move should be <X>>.\n",
+        "label": "Failure-mode escalation"
+      }
+    ]
+  },
+  "extra_sections": [],
+  "source_blocks": [
+    {
+      "heading": null,
+      "markdown": "# <One-line file description — what attack mechanism this strategy operationalises>\n\n<!--\nThis file is the canonical structure template for every strategy file in\nstrategy_library/. It is intentionally named `_TEMPLATE.md` (leading\nunderscore) so the orchestrator's discovery glob `*_attack_strategy_*.md`\nskips it — the router and inner attacker will never see this file at run\ntime.\n\nWhen the PAIR digest writes a new strategy file, it must mirror the\nsection structure below. When the user resets the strategy library to\nempty (see UTILITY.md → \"Reset strategy library\"), this file is the only\none preserved — it is what the digest reads as a structural reference.\n\nFilename convention for real strategy files (NOT this template):\n  <dataset>_attack_strategy_<short_name>_<target_model>.md\n  e.g.  agentdojo_attack_strategy_fake_trajectory_gpt-5-nano.md\n        ipi_arena_attack_strategy_natural_action_overlap_claude.md\n\nReplace every `<...>` placeholder before writing a real strategy file.\nKeep the section headings verbatim — the digest and router parse them by\nexact match.\n-->\n\n<2-4 sentence intro: what mechanism this strategy uses, why it lands on the documented target class, and what makes it different from sibling strategies. Cite the in-context examples below as evidence.>\n\n---\n\n"
+    },
+    {
+      "heading": "Recommended target-LLM scope",
+      "markdown": "## Recommended target-LLM scope\n\n<!-- The router reads this section verbatim. Be explicit about which targets\nthis strategy has been empirically confirmed on, which it's expected to\nwork on (but unverified), and which it is known to fail on. The digest\nmodule may refine these bullets when new in-context examples introduce\nevidence; it must not weaken claims without supporting evidence. -->\n\n- **Confirmed effective**: `<target_model>` (`reasoning_effort=<effort>`) — <N> documented hits below.\n- **Likely effective**: `<target_model_family>` — <reasoning grounded in the mechanism, not just keyword similarity>.\n- **Not shown to transfer**: `<target_model>` — <run-dir citation, e.g. \"0/N on eval_results/.../run_xyz\">.\n- **Use this strategy when**: <one-line predicate the router can match against a (target, surface) pair>.\n\n"
+    },
+    {
+      "heading": "Recommended user-task / injected-task scope",
+      "markdown": "## Recommended user-task / injected-task scope\n\n<!-- Same digest-may-refine contract as above. Capture the (user_task,\ninjection_task) shapes this template is known to land on. -->\n\n- **Suite coverage demonstrated**: `<suite_1>`, `<suite_2>`, ...\n- **Injection-goal forms documented**: `<verb_1>` (e.g. send_*, schedule_*, ...) , `<verb_2>`, ...\n- **Placeholder surface**: <where the injection lands — e.g. read-only tool output, decision-style API response, code-block context>.\n- **Prerequisites**: <any non-obvious conditions on the sample that must hold for this strategy to apply>.\n\n---\n\n"
+    },
+    {
+      "heading": "Why this mechanism is distinct (not <sibling_strategy_A> or <sibling_strategy_B>)",
+      "markdown": "## Why this mechanism is distinct (not <sibling_strategy_A> or <sibling_strategy_B>)\n\n<!-- For novel strategies. Explicitly contrast against every sibling\nstrategy in this dataset's library: name the structural move this\nstrategy makes that the siblings don't, and the structural move the\nsiblings make that this one doesn't. The router uses this to disambiguate\nwhen multiple strategies superficially fit. -->\n\n<2-5 sentences contrasting the core mechanism.>\n\n"
+    },
+    {
+      "heading": "The <strategy_short_name> template (<N> moves)",
+      "markdown": "## The <strategy_short_name> template (<N> moves)\n\n<!-- The \"general strategy\" — the abstract recipe the in-context examples\neach instantiate. Number each move; name the structural shape, not the\nsurface text. The digest may add / drop / reorder moves when new examples\nprove the template's actual range; every such edit must be cited by a\nspecific example below. -->\n\n1. **<move 1 name>** — <one-sentence operational description>.\n2. **<move 2 name>** — <...>.\n3. **<move 3 name>** — <...>.\n...\n\n---\n\n"
+    },
+    {
+      "heading": "In-context examples",
+      "markdown": "## In-context examples\n\n<!-- Every confirmed hit gets a complete example block here. The H2 count\nmatches the number of `### Example` headers. Each example MUST annotate\nits target model in the heading. The router and inner attacker read this\nsection directly at PAIR-init time. -->\n\n### Example 1 — `<suite> / <user_task_id> / <injection_task_id>` (target: <target_model>)\n\n**User task (verbatim)**:\n> <user task text>\n\n**Injection goal (verbatim)**:\n> <injection task goal>\n\n**Placeholder context** (the EXACT, FULL polluted tool-output slot — verbatim, NOT paraphrased):\n```\n<Paste the sample's `context_with_placeholder` VERBATIM and in full, with the\n`{INJECTION:<vec_id>}` token shown exactly where the attacker text lands. Do NOT\nsummarise it (e.g. \"injected into a review slot\" is NOT acceptable). If the\ncontext is very long, you MAY instead give a precise pointer to the verbatim\nsource instead of pasting it — e.g. `samples/<idx>.json -> context_with_placeholder`\n— but a pointer must resolve to the exact full context, never a paraphrase.>\n```\n\n**Winning injection text** (what was substituted into the placeholder):\n```\n<the verbatim injection text that landed>\n```\n\n**Resulting target tool call** (what the agent emitted):\n```\n<tool_call name>(<args matching the security-check regex>)\n```\n\n**Why this worked on <target_model>**:\n<2-3 sentences naming the specific mechanism the moves above exploited on this sample's trajectory.>\n\n### Example 2 — ...\n\n<!-- Repeat the same block format for every hit. The digest never replaces\nor deletes examples; it only appends. -->\n\n---\n\n"
+    },
+    {
+      "heading": "Strategy fingerprint, in one sentence",
+      "markdown": "## Strategy fingerprint, in one sentence\n\n<!-- A compact table the router scans to break ties. One row per documented\nexample. Columns: example #, mechanism move primarily exercised, target,\nsurface, what made it land. -->\n\n| # | Mechanism move | Target | Surface | Why it landed |\n|---|----------------|--------|---------|---------------|\n| 1 | <move>         | <m>    | <surf>  | <why>         |\n| 2 | <move>         | <m>    | <surf>  | <why>         |\n\n---\n\n"
+    },
+    {
+      "heading": "When this strategy is expected to fail",
+      "markdown": "## When this strategy is expected to fail\n\n<!-- Documented failure conditions. Each bullet should describe a\nstructural pattern (not \"the model refused\"), and where possible cite a\nrun-dir / sample that demonstrated the failure. The digest may add new\nbullets when miss-pattern analysis reveals a regime; it may remove or\nqualify a bullet only with evidence that the listed condition no longer\nholds. -->\n\n- <Failure condition 1: structural description + run-dir citation>.\n- <Failure condition 2: ...>.\n- <Failure condition 3: ...>.\n\n---\n\n"
+    },
+    {
+      "heading": "Notes for PAIR initialization with this strategy",
+      "markdown": "## Notes for PAIR initialization with this strategy\n\n<!-- Seed-prompt guidance for the inner attacker. What should iter 0 do?\nHow aggressive should the framing be on early iters? Are there safety\ngates the attacker should probe with a benign-looking iter 0 before\nescalating? The digest may update these notes when run outcomes show the\nprior guidance was wrong (always cite the contradicting example). -->\n\n- **Iter 0 framing**: <recommendation>.\n- **Iter progression**: <how to escalate / pivot across iters>.\n- **Failure-mode escalation**: <if iter K fails with <observed signal>, the next move should be <X>>.\n"
+    }
+  ],
+  "warnings": [
+    "Example 2 — ...: missing target_model; retained as null",
+    "Example 2 — ...: missing user_task; retained as null",
+    "Example 2 — ...: missing injection_goal; retained as null",
+    "Example 2 — ...: missing placeholder_context; retained as null",
+    "Example 2 — ...: missing winning_injection_text; retained as null",
+    "Example 2 — ...: missing result; retained as null",
+    "Example 2 — ...: missing why_it_worked; retained as null"
+  ]
+}

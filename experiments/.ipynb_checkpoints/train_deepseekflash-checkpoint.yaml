@@ -1,0 +1,22 @@
+# PIMiner experiment spec — edit THIS file, then run:
+#   python piminer_plan.py experiments/main_exp.yaml
+# It writes eval_results/pim_train/<name>/train_plan.json and
+#          eval_results/pim_test/<name>/test_plan.json
+# with sample_offset / run_dir / status derived automatically. Offsets are keyed
+# by BENCHMARK ONLY (not target): every target on a benchmark trains on the SAME
+# samples (offset 0); the test window is placed right after the train window, so
+# train and test never overlap while targets share the same samples.
+
+name: train_deepseekflash
+max_iters: 10                  # training (library evolves over the full budget)
+threat_model: black_box        # applies to the test sequence only
+
+# Training sequence (router-based, library evolves + digests after each).
+# Same samples per benchmark across targets: agentdojo train = samples 0..19,
+# ipi_arena train = samples 0..14 (shared by all three targets).
+train:
+  - {dataset: agentdojo, target: deepseek-v4-flash,       n: 20}
+  - {dataset: ipi_arena, target: deepseek-v4-flash,            n: 20}
+
+
+

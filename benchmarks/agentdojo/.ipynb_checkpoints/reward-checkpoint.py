@@ -25,10 +25,7 @@ def _build_openai_llm_element(model: str):
     """Construct an OpenAILLM for OpenAI model names not in AgentDojo's ModelsEnum."""
     import openai
 
-    if model.lower().startswith("gpt-5"):
-        client = openai.OpenAI(base_url="https://api2.aigcbest.top/v1")
-    else:
-        client = openai.OpenAI()
+    client = openai.OpenAI()
     # Reasoning-class models (gpt-5*) reject explicit temperature; OpenAILLM
     # already maps temperature=0.0 to NOT_GIVEN, so this is safe.
     llm = OpenAILLM(client, model)

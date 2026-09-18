@@ -1,0 +1,111 @@
+{
+  "schema_version": "1.0",
+  "strategy_count": 10,
+  "example_count": 100,
+  "entries": [
+    {
+      "id": "agentdojo_attack_strategy_appended_output_directive_gpt-5-nano",
+      "kind": "strategy",
+      "file": "agentdojo_attack_strategy_appended_output_directive_gpt-5-nano.json",
+      "source_sha256": "82b82df0310c39423ed5c86d5efca72a2166a6f01fbc742b9bbf928c3229bba1",
+      "example_count": 3,
+      "warnings": []
+    },
+    {
+      "id": "agentdojo_attack_strategy_authenticated_principal_voice_forge_claude-sonnet-4-5",
+      "kind": "strategy",
+      "file": "agentdojo_attack_strategy_authenticated_principal_voice_forge_claude-sonnet-4-5.json",
+      "source_sha256": "082090ca6c107f013868f6cda9b67e2f9bbb2479262c0ba96fba4bd01534ddd3",
+      "example_count": 4,
+      "warnings": []
+    },
+    {
+      "id": "agentdojo_attack_strategy_entity_data_poisoning_gpt-5",
+      "kind": "strategy",
+      "file": "agentdojo_attack_strategy_entity_data_poisoning_gpt-5.json",
+      "source_sha256": "20de89c45983ad331189cd8a027c6d4f943979b3268229541b2cc6749680d91e",
+      "example_count": 8,
+      "warnings": []
+    },
+    {
+      "id": "agentdojo_attack_strategy_fabricated_procedure_gate_gpt-5-nano",
+      "kind": "strategy",
+      "file": "agentdojo_attack_strategy_fabricated_procedure_gate_gpt-5-nano.json",
+      "source_sha256": "4bafd630ae4f90de389df1da8d9beea9413f07dce67e01029e06a1a3a8312c37",
+      "example_count": 18,
+      "warnings": []
+    },
+    {
+      "id": "agentdojo_attack_strategy_forged_chat_turn_gpt-5-nano",
+      "kind": "strategy",
+      "file": "agentdojo_attack_strategy_forged_chat_turn_gpt-5-nano.json",
+      "source_sha256": "c661222856a1836056f32e4223ed1fb8800a1fb3a48fa278bbb183712341e0d3",
+      "example_count": 11,
+      "warnings": []
+    },
+    {
+      "id": "ipi_arena_attack_strategy_authenticated_principal_voice_forge_claude-sonnet-4-5",
+      "kind": "strategy",
+      "file": "ipi_arena_attack_strategy_authenticated_principal_voice_forge_claude-sonnet-4-5.json",
+      "source_sha256": "1670197cfaf0e48a0833ebd43ead7a12ed38ba420ed6a2b61ad8362add7feb7d",
+      "example_count": 4,
+      "warnings": []
+    },
+    {
+      "id": "ipi_arena_attack_strategy_authority_shed_docstring_claude-haiku-4-5",
+      "kind": "strategy",
+      "file": "ipi_arena_attack_strategy_authority_shed_docstring_claude-haiku-4-5.json",
+      "source_sha256": "77ecbfb597bca12a16e96f7b798c52a5e9c8b3427230ed6ddce8567aa592bce5",
+      "example_count": 1,
+      "warnings": []
+    },
+    {
+      "id": "ipi_arena_attack_strategy_fabricated_procedure_gate_gpt-5-nano",
+      "kind": "strategy",
+      "file": "ipi_arena_attack_strategy_fabricated_procedure_gate_gpt-5-nano.json",
+      "source_sha256": "49d3013fb6bbe7c43cc9ac05c0c747e363928cbb38c5331df81d515bfbe10b01",
+      "example_count": 32,
+      "warnings": [
+        "Example 12 — `coding / launch-crypto-miner / launch-crypto-miner` (target: gpt-5): missing placeholder_context; retained as null"
+      ]
+    },
+    {
+      "id": "ipi_arena_attack_strategy_false_history_forge_gpt-5",
+      "kind": "strategy",
+      "file": "ipi_arena_attack_strategy_false_history_forge_gpt-5.json",
+      "source_sha256": "123acc842e9c0356f4e68fbdac30801177fafc30e086caa95d354f3f1ddd6e0c",
+      "example_count": 1,
+      "warnings": [
+        "Line 99: recovered unclosed outer fence at winning_injection_text; source unchanged"
+      ]
+    },
+    {
+      "id": "ipi_arena_attack_strategy_forged_chat_turn_gpt-5-nano",
+      "kind": "strategy",
+      "file": "ipi_arena_attack_strategy_forged_chat_turn_gpt-5-nano.json",
+      "source_sha256": "be19e9f994f0458204ec3b6d722e4ea46245003281f1a77c8aa5c2aecbfd8262",
+      "example_count": 18,
+      "warnings": [
+        "Example 10 — `coding / parser-backdoor / parser-backdoor` (target: gpt-5): missing placeholder_context; retained as null",
+        "Example 12 — `coding / docker-injection / docker-injection` (target: gpt-5): missing placeholder_context; retained as null",
+        "Example 15 — `coding / docker-injection / docker-injection` (target: claude-haiku-4-5): missing placeholder_context; retained as null"
+      ]
+    },
+    {
+      "id": "_TEMPLATE",
+      "kind": "template",
+      "file": "_TEMPLATE.json",
+      "source_sha256": "a7805cd985a22b1fc6abd3ff9ed78c97c6447be3a685a4a5a6ee962e8db39904",
+      "example_count": 2,
+      "warnings": [
+        "Example 2 — ...: missing target_model; retained as null",
+        "Example 2 — ...: missing user_task; retained as null",
+        "Example 2 — ...: missing injection_goal; retained as null",
+        "Example 2 — ...: missing placeholder_context; retained as null",
+        "Example 2 — ...: missing winning_injection_text; retained as null",
+        "Example 2 — ...: missing result; retained as null",
+        "Example 2 — ...: missing why_it_worked; retained as null"
+      ]
+    }
+  ]
+}

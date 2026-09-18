@@ -141,7 +141,10 @@ class InjecAgentAttackReward:
         import openai
         if not os.environ.get("OPENAI_API_KEY"):
             raise RuntimeError("OPENAI_API_KEY must be set for InjecAgent GPT targets")
-        self._client = openai.OpenAI()
+        if target_model.lower().startswith("gpt-5"):
+            self._client = openai.OpenAI(base_url="https://api2.aigcbest.top/v1")
+        else:
+            self._client = openai.OpenAI()
 
         self.tool_dict_gpt = injecagent_get_tool_dict(
             tools_path or _DEFAULT_TOOLS_PATH, gpt_format=True

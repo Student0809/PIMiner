@@ -85,6 +85,17 @@ DIGEST_LOG_FILENAME = "digest_log.json"
 DIGEST_AUDIT_FILENAME = "digest_audit.md"
 
 
+def _append_run_log(log_path, text: str) -> None:
+    """Diagnostic logging must not invalidate an already persisted result."""
+    if not log_path:
+        return
+    try:
+        with open(log_path, "a") as f:
+            f.write(text)
+    except OSError as exc:
+        print(f"WARNING: cannot append run log {log_path}: {exc}", file=sys.stderr)
+
+
 # ---------------------------------------------------------------------------
 # Strategy router (Claude Code is the router; this script orchestrates state)
 # ---------------------------------------------------------------------------
@@ -694,18 +705,17 @@ def cmd_init(args: argparse.Namespace) -> int:
     }
     (run_dir / CONFIG_FILENAME).write_text(json.dumps(config, indent=2))
 
-    with log_path.open("a") as f:
-        strat_summary = (
-            f"strategy={pre_assigned_id}"
-            if routing_mode == "override"
-            else f"router=claude_code n_strategies={len(registered_strategies)}"
-        )
-        f.write(
+    strat_summary = (
+        f"strategy={pre_assigned_id}"
+        if routing_mode == "override"
+        else f"router=claude_code n_strategies={len(registered_strategies)}"
+    )
+    _append_run_log(log_path,
             f"\n=== run {run_dir.name} init at {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n"
             f"target={args.target_model} dataset={args.dataset} "
             f"max_iters={args.max_iters} reasoning_effort={args.reasoning_effort} "
             f"n_samples={len(samples)} routing_mode={routing_mode} {strat_summary}\n"
-        )
+    )
 
     for si, row in enumerate(samples):
         candidates = row.get("visible_vectors")
@@ -1219,8 +1229,7 @@ def cmd_route_submit(args: argparse.Namespace) -> int:
 
     log_path = cfg.get("log_path")
     if log_path:
-        with open(log_path, "a") as f:
-            f.write(f"sample {sample['sample_index']:03d} routed_to={','.join(chosen)}\n")
+        _append_run_log(log_path, f"sample {sample['sample_index']:03d} routed_to={','.join(chosen)}\n")
 
     print(json.dumps({
         "sample_index": sample["sample_index"],
@@ -1446,8 +1455,7 @@ def cmd_submit(args: argparse.Namespace) -> int:
         )
         if error_str:
             line += f" error={error_str[:120]}"
-        with open(log_path, "a") as f:
-            f.write(line + "\n")
+        _append_run_log(log_path, line + "\n")
 
     print(json.dumps({
         "sample_index": sample["sample_index"],
@@ -1515,13 +1523,12 @@ def cmd_summary(args: argparse.Namespace) -> int:
 
     log_path = cfg.get("log_path")
     if log_path:
-        with open(log_path, "a") as f:
-            f.write(
-                f"=== summary {run_dir.name} === "
-                f"asr={summary['asr']:.2%} "
-                f"hits={n_hits}/{n_valid} "
-                f"miss={n_miss} other={n_other} pending={n_pending}\n"
-            )
+        _append_run_log(log_path,
+            f"=== summary {run_dir.name} === "
+            f"asr={summary['asr']:.2%} "
+            f"hits={n_hits}/{n_valid} "
+            f"miss={n_miss} other={n_other} pending={n_pending}\n"
+        )
 
     print(json.dumps(summary, indent=2))
     return 0
@@ -1725,12 +1732,11 @@ def cmd_digest(args: argparse.Namespace) -> int:
 
         log_path = cfg.get("log_path")
         if log_path:
-            with open(log_path, "a") as f:
-                f.write(
-                    f"=== digest finalize {run_dir.name} === "
-                    f"marked={sorted({int(i) for i in new_indices})} "
-                    f"note={args.note or ''}\n"
-                )
+            _append_run_log(log_path,
+                f"=== digest finalize {run_dir.name} === "
+                f"marked={sorted({int(i) for i in new_indices})} "
+                f"note={args.note or ''}\n"
+            )
         print(json.dumps({
             "run_dir": str(run_dir),
             "digested_sample_indices": log["digested_sample_indices"],

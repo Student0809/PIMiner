@@ -35,6 +35,28 @@
 
 set -uo pipefail
 DIR="${1:?usage: piminer_test_parallel.sh <test_run_dir>}"
+
+# ===== BEGIN: 权限授予（放在 DIR 解析之后、PLAN 之前） =====
+# 1) 项目根 ./ 授予 claudeuser 写权限 + 默认 ACL（影响之后新建的子项）
+RUN_USER="${PIM_RUN_USER:-claudeuser}"
+if [ "$(id -u)" -eq 0 ] && id "$RUN_USER" >/dev/null 2>&1; then
+  setfacl    -m "u:${RUN_USER}:rwx"  . 2>/dev/null || true
+  setfacl -d -m "u:${RUN_USER}:rwX"  . 2>/dev/null || true
+  echo "[test] pre-granted ${RUN_USER} rwx (+default rwX) on project root $PWD"
+fi
+
+# 2) 本次 run 的实际路径及其必要父层，递归补一次写权限
+#    （./ 的默认 ACL 只对“新建”子项生效，修不了已存在的 root 755 目录）
+if [ "$(id -u)" -eq 0 ] && id "$RUN_USER" >/dev/null 2>&1; then
+  for base in "$DIR" "$(dirname "$DIR")" "eval_results" "eval_results/pim_test"; do
+    [ -e "$base" ] || continue
+    setfacl -R    -m "u:${RUN_USER}:rwX" "$base" 2>/dev/null || true
+    setfacl -R -d -m "u:${RUN_USER}:rwX" "$base" 2>/dev/null || true
+  done
+  echo "[test] granted ${RUN_USER} rwX (+default) under $DIR and parents"
+fi
+# ===== END: 权限授予 =====
+
 PLAN="$DIR/test_plan.json"
 [ -f "$PLAN" ] || { echo "[test] no plan at $PLAN" >&2; exit 1; }
 # Load provider keys (OPENAI/GEMINI/DEEPSEEK/PIMINER_TARGET_*) from the gitignored

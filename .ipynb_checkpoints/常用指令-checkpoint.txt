@@ -21,7 +21,7 @@ PIMINER_IPI_JUDGE_MODEL=deepseek-v4-flash \
 # 脚本会读取该目录中的 test_plan / 配置，并把结果写回对应目录
 ./piminer_test_parallel.sh eval_results/pim_test/deepseek_full
 
-生成数据：python piminer_plan.py experiments/deepseek_small.yaml --force
+生成数据：python piminer_plan.py experiments/gpt_nano_small.yaml --force
 仅查看：python piminer_plan.py experiments/deepseek_full.yaml --print
 
 {
@@ -40,11 +40,19 @@ PIMINER_IPI_JUDGE_MODEL=deepseek-v4-flash \
 
 
 启动命令
+PIM_AGENT_BACKEND=codex
 setsid bash -c 'PIM_WAVE_SIZE=1 ./piminer_test_parallel.sh eval_results/pim_test/deepseek_small' \
   > /tmp/piminer_test.log 2>&1 < /dev/null &
 
 看日志：
 tail -f /tmp/piminer_test.log
+
+apt-get install -y libasound2
+cd /root/workspace/PIMiner
+
+# 1. 修日志权限
+chown -R claudeuser:claudeuser logs
+chmod -R u+rwX,g+rwX logs
 
 关闭命令：
 pkill -u claudeuser -f "claude -p"
@@ -60,6 +68,9 @@ pgrep -af "piminer_test_parallel.sh"
 打开另一个用户
 runuser -u claudeuser -- bash
 
+给予权限
+setfacl -R -m u:claudeuser:rwX ./
+setfacl -d -m u:claudeuser:rwX ./
 上传github
 git add 文件名
 git commit -m "说明这次改了什么"

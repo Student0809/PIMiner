@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / 'iterative_attack_orchestrator/agent_cli.py'
@@ -17,7 +18,8 @@ spec.loader.exec_module(launcher)
 class AgentCLITest(unittest.TestCase):
     def test_target_credentials_are_separate(self):
         source = {'OPENAI_API_KEY': 'ordinary-target', 'PIMINER_TARGET_OPENAI_API_KEY': 'explicit-target',
-                  'OPENAI_BASE_URL': 'https://target.invalid', 'CODEX_API_KEY': 'agent-api', 'PATH': '/bin'}
+                  'OPENAI_BASE_URL': 'https://target.invalid', 'CODEX_API_KEY': 'agent-api', 'PATH': '/bin',
+                  'PIM_CONDA_PREFIX': sys.prefix}
         env = launcher.codex_environment(source)
         self.assertNotIn('OPENAI_API_KEY', env)
         self.assertNotIn('CODEX_API_KEY', env)
@@ -25,6 +27,32 @@ class AgentCLITest(unittest.TestCase):
         self.assertEqual(env['PIMINER_TARGET_OPENAI_API_KEY'], 'explicit-target')
         self.assertEqual(env['PIMINER_TARGET_OPENAI_BASE_URL'], 'https://target.invalid')
         self.assertEqual(source['OPENAI_API_KEY'], 'ordinary-target')
+
+    def test_piminer_runtime_is_pinned(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / 'envs' / 'piminer'
+            (prefix / 'bin').mkdir(parents=True)
+            (prefix / 'bin/python').symlink_to(sys.executable)
+            source = {'PIM_CONDA_PREFIX': str(prefix), 'PATH': '/base/bin:/usr/bin',
+                      'CONDA_PREFIX': '/base', 'CONDA_DEFAULT_ENV': 'base'}
+            env = launcher.codex_environment(source)
+            self.assertEqual(env['PATH'].split(os.pathsep)[0], str(prefix / 'bin'))
+            self.assertEqual(env['CONDA_PREFIX'], str(prefix))
+            self.assertEqual(env['CONDA_DEFAULT_ENV'], 'piminer')
+            self.assertEqual(env['PIMINER_PYTHON'], str(prefix / 'bin/python'))
+            self.assertEqual(source['CONDA_DEFAULT_ENV'], 'base')
+            prompt = launcher.expand_prompt('route this sample', env['PIMINER_PYTHON'])
+            self.assertIn(str(prefix / 'bin/python'), prompt)
+            self.assertIn('login=false', prompt)
+            self.assertIn('Do not install dependencies', prompt)
+            with patch.object(launcher.shutil, 'which', return_value='/base/bin/conda'):
+                with self.assertRaises(ValueError):
+                    launcher.codex_environment({'PATH': '/base/bin'})
+
+    def test_active_piminer_prefix_is_used(self):
+        env = launcher.codex_environment({'CONDA_DEFAULT_ENV': 'piminer',
+                                         'CONDA_PREFIX': sys.prefix, 'PATH': '/bin'})
+        self.assertEqual(env['CONDA_PREFIX'], str(Path(sys.prefix).resolve()))
 
     def test_digest_is_expanded(self):
         prompt = launcher.expand_prompt('/digest eval_results/example')
@@ -47,7 +75,8 @@ class AgentCLITest(unittest.TestCase):
                             '"target":os.environ.get("PIMINER_TARGET_OPENAI_API_KEY")}))\n')
             fake.chmod(0o755)
             env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'],
-                       PIM_AGENT_BACKEND='codex', OPENAI_API_KEY='test-target')
+                       PIM_AGENT_BACKEND='codex', OPENAI_API_KEY='test-target',
+                       PIM_CONDA_PREFIX=sys.prefix)
             env.pop('PIMINER_TARGET_OPENAI_API_KEY', None)
             result = subprocess.run([sys.executable, str(CLI), '-p', 'route this sample',
                                      '--model', 'test-model', '--effort', 'high',
@@ -58,6 +87,7 @@ class AgentCLITest(unittest.TestCase):
             self.assertIn('--json', output['argv'])
             self.assertIn('--dangerously-bypass-approvals-and-sandbox', output['argv'])
             self.assertIn('forced_login_method="chatgpt"', output['argv'])
+            self.assertIn('allow_login_shell=false', output['argv'])
             self.assertIn('model_reasoning_effort="high"', output['argv'])
             self.assertIn('test-model', output['argv'])
             self.assertIn('route this sample', output['prompt'])

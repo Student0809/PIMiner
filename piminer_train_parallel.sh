@@ -25,8 +25,43 @@
 
 set -uo pipefail
 DIR="${1:?usage: piminer_train_parallel.sh <train_run_dir>}"
+PROJECT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+if [ "$(pwd -P)" != "$PROJECT_DIR" ]; then
+  echo "[train] ERROR start training from project directory $PROJECT_DIR" >&2; exit 1
+fi
 PLAN="$DIR/train_plan.json"
 [ -f "$PLAN" ] || { echo "[split] no plan at $PLAN" >&2; exit 1; }
+
+# ===== BEGIN: 权限授予（放在 DIR 解析之后、PLAN 之前） =====
+# Grant the run user full access to project data, never world-writable access.
+# Physical find avoids symlink targets; repository/app metadata is excluded.
+RUN_USER="${PIM_RUN_USER:-claudeuser}"
+if ! id "$RUN_USER" >/dev/null 2>&1; then
+  echo "[train] ERROR unknown run user: $RUN_USER" >&2; exit 1
+fi
+mkdir -p logs || exit 1
+if [ "$(id -u)" -eq 0 ] || [ "$(id -un)" = "$RUN_USER" ]; then
+  command -v setfacl >/dev/null || { echo "[train] ERROR setfacl is required" >&2; exit 1; }
+  # Batched exec propagates any setfacl failure through find's exit status.
+  find . \( -name .git -o -name .codex -o -name .agents \) -prune -o \
+    \( -type f -o -type d \) -exec setfacl -m "u:${RUN_USER}:rwx" {} + \
+    || { echo "[train] ERROR project access ACL setup failed" >&2; exit 1; }
+  find . \( -name .git -o -name .codex -o -name .agents \) -prune -o \
+    -type d -exec setfacl -d -m "u:${RUN_USER}:rwx" {} + \
+    || { echo "[train] ERROR inheritable ACL setup failed" >&2; exit 1; }
+  if [ "$(id -u)" -eq 0 ]; then
+    runuser -u "$RUN_USER" -- test -w "$PWD/logs" \
+      || { echo "[train] ERROR $RUN_USER cannot write logs" >&2; exit 1; }
+  else
+    [ -w logs ] || { echo "[train] ERROR logs not writable; ask root to provision ACLs" >&2; exit 1; }
+  fi
+  echo "[train] granted $RUN_USER project rwx + inheritable directory ACLs (metadata excluded)"
+else
+  echo "[train] ERROR run as root to provision ACLs, or as $RUN_USER with writable logs" >&2
+  exit 1
+fi
+# ===== END: 权限授予 =====
+
 # Load provider keys (OPENAI/GEMINI/DEEPSEEK/PIMINER_TARGET_*) from the gitignored
 # .env so target calls in the attacker's submit subprocess see them. Done BEFORE
 # the ANTHROPIC_API_KEY unset below so an ANTHROPIC_API_KEY in .env is also cleared
