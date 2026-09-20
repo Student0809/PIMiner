@@ -15,8 +15,7 @@ threat_model: black_box        # applies to the test sequence only
 # Same samples per benchmark across targets: agentdojo train = samples 0..19,
 # ipi_arena train = samples 0..14 (shared by all three targets).
 train:
-  - {dataset: agentdojo, target: deepseek-v4-flash,       n: 20}
-  - {dataset: ipi_arena, target: deepseek-v4-flash,            n: 20}
+  - {dataset: ipi_arena, target: deepseek-v4-flash,            n: 1,offset: 37}
 
 
 
